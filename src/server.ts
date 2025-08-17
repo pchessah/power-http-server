@@ -3,13 +3,14 @@ import * as net from 'net';
 import { HttpRequestParser } from './httpParser';
 
 /**
- * Simple HTTP Server Implementation
+ * Simple HTTP Server Implementation with Keep-Alive Support
  * 
  * This server demonstrates the HttpRequestParser in action by:
  * - Accepting TCP connections on port 8080
  * - Parsing incoming HTTP requests using HttpRequestParser
  * - Generating appropriate HTTP responses
  * - Handling basic routing (root path vs 404)
+ * - Supporting HTTP Keep-Alive for persistent connections
  * 
  * The server serves as a practical example of how to use the HttpRequestParser
  * class for building HTTP-based applications.
@@ -53,12 +54,34 @@ const server = net.createServer((socket: net.Socket) => {
           console.log(`✅ 200 OK for ${parser.method} ${parser.path}`);
         }
 
-        // Generate and send HTTP response
-        const response = parser.generateResponse(statusCode, responseBody, { 'Content-Type': contentType });
-        socket.write(response);
-        socket.end();
+        // Check if client supports Keep-Alive
+        const connectionHeader = parser.getHeader('connection');
+        const keepAlive = connectionHeader && connectionHeader.toLowerCase() === 'keep-alive';
         
-        console.log(`📤 Response sent to ${clientAddress} (${statusCode})`);
+        // Prepare response headers
+        const responseHeaders: Record<string, string> = { 'Content-Type': contentType };
+        
+        // Add Keep-Alive headers if supported
+        if (keepAlive) {
+          responseHeaders['Connection'] = 'keep-alive';
+          responseHeaders['Keep-Alive'] = 'timeout=5, max=1000';
+        } else {
+          responseHeaders['Connection'] = 'close';
+        }
+
+        // Generate and send HTTP response
+        const response = parser.generateResponse(statusCode, responseBody, responseHeaders);
+        socket.write(response);
+        
+        console.log(`📤 Response sent to ${clientAddress} (${statusCode})${keepAlive ? ' [Keep-Alive]' : ''}`);
+        
+        // Remove processed data from buffer
+        data = data.slice(expectedLength);
+        
+        // Close connection if Keep-Alive not supported or no more data
+        if (!keepAlive || data.length === 0) {
+          socket.end();
+        }
       }
 
     } catch (error) {
@@ -98,4 +121,5 @@ server.listen(8080, () => {
   console.log('💡 Try: curl http://localhost:8080/');
   console.log('💡 Try: curl -X POST -d "hello world" http://localhost:8080/');
   console.log('💡 Try: curl http://localhost:8080/nonexistent');
+  console.log('💡 Try: curl -H "Connection: keep-alive" http://localhost:8080/');
 });
