@@ -2,6 +2,12 @@
 
 A lightweight HTTP server implementation that parses HTTP requests from scratch without external libraries. Built in TypeScript with comprehensive documentation and type safety.
 
+## 🌐 Live Demo
+
+**Try it now:** [https://power-http-server.onrender.com](https://power-http-server.onrender.com)
+
+The server is currently hosted on Render and responds with "Cows will fly!" for GET requests to the root path.
+
 ## 🚀 Features
 
 - **Raw HTTP Parsing**: Parses HTTP requests from scratch without external dependencies
